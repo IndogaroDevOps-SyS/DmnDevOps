@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
-import java.io.File
 
 class DaemonService : Service() {
     private var process: Process? = null
@@ -18,7 +17,6 @@ class DaemonService : Service() {
 
         Thread {
             try {
-                // Menyesuaikan argumen ke config.yaml sesuai permintaan lu
                 val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
                     .directory(workingDir)
                     .redirectErrorStream(true)
@@ -28,7 +26,8 @@ class DaemonService : Service() {
                 env["TMPDIR"] = workingDir.absolutePath
 
                 process = pb.start()
-                Log.i(TAG, "Binary Go berhasil dieksekusi di PID: ${process?.pid()}")
+                val pid = try { process?.pid() } catch (e: Throwable) { -1 }
+                Log.i(TAG, "Binary Go berhasil dieksekusi di PID: $pid")
 
                 process?.inputStream?.bufferedReader()?.use { reader ->
                     var line: String?
