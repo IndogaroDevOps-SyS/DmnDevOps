@@ -4,19 +4,30 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import java.io.File
 
 class DaemonService : Service() {
     private var process: Process? = null
     private val TAG = "IndDevDaemon"
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "Memulai proses daemon Go...")
-        
-        val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
+        Log.i(TAG, "Inisialisasi Daemon Service...")
+
         val workingDir = applicationContext.filesDir
 
         Thread {
             try {
+                // Inisialisasi struktur direktori pendukung di storage internal
+                val blocklistDir = File(workingDir, "blocklists")
+                if (!blocklistDir.exists()) {
+                    blocklistDir.mkdirs()
+                    Log.i(TAG, "Direktori blocklist berhasil disiapkan.")
+                }
+
+                // Ekstrak binary Go dari assets jika belum ada
+                val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
+
+                // Eksekusi binary Go daemon
                 val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
                     .directory(workingDir)
                     .redirectErrorStream(true)
@@ -26,7 +37,7 @@ class DaemonService : Service() {
                 env["TMPDIR"] = workingDir.absolutePath
 
                 process = pb.start()
-                Log.i(TAG, "Binary Go berhasil dieksekusi.")
+                Log.i(TAG, "Binary Go daemon berhasil berjalan.")
 
                 process?.inputStream?.bufferedReader()?.use { reader ->
                     var line: String?
