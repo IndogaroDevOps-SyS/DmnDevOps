@@ -26,8 +26,7 @@ class DaemonService : Service() {
                 env["TMPDIR"] = workingDir.absolutePath
 
                 process = pb.start()
-                val pid = try { process?.pid() } catch (e: Throwable) { -1 }
-                Log.i(TAG, "Binary Go berhasil dieksekusi di PID: $pid")
+                Log.i(TAG, "Binary Go berhasil dieksekusi.")
 
                 process?.inputStream?.bufferedReader()?.use { reader ->
                     var line: String?
