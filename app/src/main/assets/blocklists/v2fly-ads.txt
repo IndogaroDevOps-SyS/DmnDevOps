@@ -1,36 +1,3 @@
-# This file contains domains of all ads providers, including both the domains that serves ads, and the domains of providers themselves.
-include:category-ads
-
-include:adjust
-include:clearbit
-include:growingio
-include:ogury
-include:openx
-include:pubmatic
-include:segment
-include:sentry
-include:supersonic
-include:taboola
-
-1rx.io @ads
-7box.vip @ads
-ad-delivery.net @ads
-adcolony.com @ads
-adinplay.com @ads
-adnxs.com @ads
-ads.trafficjunky.net @ads
-advertserve.com @ads
-adview.cn @ads
-casalemedia.com @ads
-contextual.media.net @ads
-cpmstar.com @ads
-demdex.net @ads
-httpool.com @ads
-lijit.com @ads
-mfadsrvr.com @ads
-mgid.com @ads
-ns1p.net @ads
-sigmob.com @ads
-spotxchange.com @ads
-unimhk.com @ads
-upapi.net @ads
+version https://git-lfs.github.com/spec/v1
+oid sha256:86c2f326d640b71d97fd546561de5d921ed8bb6277c9c2c1f1254add1a4f5429
+size 706

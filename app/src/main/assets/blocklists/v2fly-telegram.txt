@@ -1,21 +1,3 @@
-cdn-telegram.org
-comments.app
-contest.com
-fragment.com
-graph.org
-quiz.directory
-t.me
-tdesktop.com
-telega.one
-telegra.ph
-telegram-cdn.org
-telegram.dog
-telegram.me
-telegram.org
-telegram.space
-telesco.pe
-tg.dev
-ton.org
-toncenter.com
-tx.me
-usercontent.dev
+version https://git-lfs.github.com/spec/v1
+oid sha256:24a2d026dbf3a09a8ca893420a40adbad70328978df0100d9c63abecdbf01b5d
+size 252
