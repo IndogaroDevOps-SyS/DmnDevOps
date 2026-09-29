@@ -6,31 +6,31 @@ import java.io.FileOutputStream
 
 object AssetExtractor {
     fun extractAssetsIfNeeded(context: Context): File {
-        // Pindahkan target ekstraksi ke cacheDir agar dijamin bisa dieksekusi (bypass noexec restriction di filesDir)
-        val cacheBinDir = File(context.cacheDir, "bin")
-        if (!cacheBinDir.exists()) {
-            cacheBinDir.mkdirs()
+        // Gunakan path absolut sandbox aplikasi ala Termux
+        val targetDir = File("/data/data/com.inddev.daemon/files/bin")
+        if (!targetDir.exists()) {
+            targetDir.mkdirs()
         }
 
         val binaryFileName = "Golangbin"
-        val binaryFile = File(cacheBinDir, binaryFileName)
+        val binaryFile = File(targetDir, binaryFileName)
 
-        // Selalu perbarui binary dari assets jika versi APK baru masuk
+        // Salin dari assets
         context.assets.open(binaryFileName).use { input ->
             FileOutputStream(binaryFile).use { output ->
                 input.copyTo(output)
             }
         }
 
-        // Paksa set permission executable (chmod +x) secara mutlak
-        val isSuccess = binaryFile.setExecutable(true, false)
-        if (!isSuccess && !binaryFile.canExecute()) {
-            // Fallback runtime chmod via sh jika Java API gagal di beberapa custom ROM
-            try {
-                Runtime.getRuntime().exec(arrayOf("chmod", "755", binaryFile.absolutePath)).waitFor()
-            } catch (e: Exception) {
-                // Abaikan jika gagal, andalkan setExecutable
-            }
+        // Terapkan chmod 755 secara tegas menggunakan perintah shell sistem
+        try {
+            val process = Runtime.getRuntime().exec(arrayOf("chmod", "755", binaryFile.absolutePath))
+            process.waitFor()
+        } catch (e: Exception) {
+            // Fallback ke Java API jika shell chmod dibatasi
+            binaryFile.setExecutable(true, false)
+            binaryFile.setReadable(true, false)
+            binaryFile.setWritable(true, true)
         }
 
         return binaryFile
