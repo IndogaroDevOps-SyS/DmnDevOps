@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console v3"
+            text = "IndDev Daemon Console v5"
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
@@ -48,8 +48,14 @@ class MainActivity : AppCompatActivity() {
 
         thread {
             try {
-                val workingDir = applicationContext.filesDir
-                appendLog("Direktori kerja utama: ${workingDir.absolutePath}")
+                // Paksa path absolut fisik yang seragam (bukan /data/user/)
+                val packageName = applicationContext.packageName
+                val workingDir = File("/data/data/$packageName/files")
+                if (!workingDir.exists()) {
+                    workingDir.mkdirs()
+                }
+                
+                appendLog("Direktori kerja absolut: ${workingDir.absolutePath}")
 
                 val blocklistDir = File(workingDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
@@ -85,9 +91,10 @@ class MainActivity : AppCompatActivity() {
 
                 appendLog("Mengekstrak dan menyiapkan Golangbin...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
-                appendLog("Binary siap dieksekusi di: ${binaryFile.absolutePath}")
+                appendLog("Binary siap di: ${binaryFile.absolutePath}")
 
-                // Eksekusi langsung menggunakan ProcessBuilder dengan environment runtime bersih
+                appendLog("Menjalankan Golangbin secara presisi...")
+                // Eksekusi langsung dengan menyamakan working directory dan path binary menggunakan /data/data/
                 val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
                     .directory(workingDir)
                     .redirectErrorStream(true)
@@ -97,7 +104,7 @@ class MainActivity : AppCompatActivity() {
                 env["TMPDIR"] = workingDir.absolutePath
 
                 val process = pb.start()
-                appendLog("SUCCESS: Golangbin daemon aktif di background!")
+                appendLog("SUCCESS: Golangbin daemon aktif!")
 
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
