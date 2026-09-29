@@ -46,7 +46,6 @@ class MainActivity : AppCompatActivity() {
         scrollView.addView(layout)
         setContentView(scrollView)
 
-        // Jalankan proses latar belakang
         thread {
             try {
                 val workingDir = applicationContext.filesDir
@@ -85,7 +84,7 @@ class MainActivity : AppCompatActivity() {
                     appendLog("Folder blocklists sudah ada, melewati unduhan.")
                 }
 
-                appendLog("Mengekstrak binary Go...")
+                appendLog("Mengekstrak binary Go kustom...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
                 appendLog("Binary siap di: ${binaryFile.absolutePath}")
 
@@ -101,7 +100,6 @@ class MainActivity : AppCompatActivity() {
                 val process = pb.start()
                 appendLog("SUCCESS: Binary Go berhasil dieksekusi!")
 
-                // Baca log dari binary secara real-time
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {

@@ -11,18 +11,27 @@ object AssetExtractor {
             binDir.mkdirs()
         }
 
-        val binaryFile = File(binDir, "xray")
+        // Cari file binary yang ada di folder assets aplikasi
+        val assetManager = context.assets
+        val assetsList = assetManager.list("") ?: emptyArray()
+        
+        // Pilih file apa saja di assets yang bukan folder bawaan android (seperti images, js, dsb)
+        // Atau cari file binary utama lu
+        val binaryAssetName = assetsList.firstOrNull { 
+            it != "images" && it != "sounds" && it != "webkit" && !it.endsWith(".png") && !it.endsWith(".ogg") 
+        } ?: throw IllegalStateException("Tidak ada file binary Go yang ditemukan di folder assets!")
 
-        // Jika binary belum ada di internal storage, ekstrak dari assets
+        val binaryFile = File(binDir, binaryAssetName)
+
         if (!binaryFile.exists()) {
-            context.assets.open("xray").use { input ->
+            assetManager.open(binaryAssetName).use { input ->
                 FileOutputStream(binaryFile).use { output ->
                     input.copyTo(output)
                 }
             }
         }
 
-        // BERIKAN IZIN EKSEKUSI (CHMOD +X) SECARA PAKSA AGAR TIDAK ERROR 13 PERMISSION DENIED
+        // Wajib beri izin eksekusi (chmod +x)
         binaryFile.setExecutable(true, false)
 
         return binaryFile
