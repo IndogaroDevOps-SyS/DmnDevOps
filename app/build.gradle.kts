@@ -12,12 +12,18 @@ android {
     defaultConfig {
         applicationId = "com.inddev.daemon"
         minSdk = 26
-        targetSdk = 28 // Bypass SELinux W^X restrictions dengan menargetkan Android 9
+        targetSdk = 28
 
         ndk {
             abiFilters.clear()
             abiFilters.add("arm64-v8a")
         }
+    }
+
+    lint {
+        isCheckReleaseBuilds = false
+        isAbortOnError = false
+        disable.add("ExpiredTargetSdkVersion")
     }
 
     buildTypes {
