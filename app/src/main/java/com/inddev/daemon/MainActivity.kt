@@ -1,7 +1,10 @@
 package com.inddev.daemon
 
-import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
+import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
@@ -9,46 +12,50 @@ import java.net.URL
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var statusText: TextView
+    private lateinit var logTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Buat UI dinamis via kode biar gak perlu repot XML kalau ada perubahan
-        val layout = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER
-            setPadding(48, 48, 48, 48)
-            setBackgroundColor(android.graphics.Color.parseColor("#121212"))
+
+        val scrollView = ScrollView(this).apply {
+            setBackgroundColor(Color.parseColor("#121212"))
+            setPadding(32, 32, 32, 32)
+        }
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console"
-            setTextColor(android.graphics.Color.WHITE)
-            textSize = 20f
-            setTypeface(null, android.graphics.Typeface.BOLD)
+            text = "IndDev Daemon Console v2"
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 0, 0, 24)
         }
 
-        statusText = TextView(this).apply {
-            text = "Menyiapkan lingkungan & mengunduh payload..."
-            setTextColor(android.graphics.Color.parseColor("#00FF66"))
-            textSize = 14f
-            setPadding(0, 32, 0, 0)
+        logTextView = TextView(this).apply {
+            text = "[INIT] Memulai aplikasi...\n"
+            setTextColor(Color.parseColor("#00FF66"))
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
         }
 
         layout.addView(titleText)
-        layout.addView(statusText)
-        setContentView(layout)
+        layout.addView(logTextView)
+        scrollView.addView(layout)
+        setContentView(scrollView)
 
-        // Jalankan proses download & daemon langsung di Background Thread
+        // Jalankan proses latar belakang
         thread {
             try {
                 val workingDir = applicationContext.filesDir
-                val blocklistDir = File(workingDir, "blocklists")
+                appendLog("Direktori kerja: ${workingDir.absolutePath}")
 
+                val blocklistDir = File(workingDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
                     blocklistDir.mkdirs()
-                    updateStatus("Mengunduh blocklists dari GitHub...")
+                    appendLog("Membuat folder blocklists...")
 
                     val filesToDownload = listOf(
                         "adaway.txt", "adguarddns.txt", "blocklist-ads.txt",
@@ -62,22 +69,27 @@ class MainActivity : AppCompatActivity() {
 
                     for (fileName in filesToDownload) {
                         try {
+                            appendLog("Downloading: $fileName...")
                             val targetFile = File(blocklistDir, fileName)
                             URL("$baseUrl$fileName").openStream().use { input ->
                                 targetFile.outputStream().use { output ->
                                     input.copyTo(output)
                                 }
                             }
+                            appendLog("OK: $fileName")
                         } catch (e: Exception) {
-                            // Abaikan file yang gagal satuan, lanjut ke file berikutnya
+                            appendLog("GAGAL download $fileName: ${e.localizedMessage}")
                         }
                     }
+                } else {
+                    appendLog("Folder blocklists sudah ada, melewati unduhan.")
                 }
 
-                updateStatus("Ekstraksi binary Go...")
+                appendLog("Mengekstrak binary Go...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
+                appendLog("Binary siap di: ${binaryFile.absolutePath}")
 
-                updateStatus("Menjalankan binary daemon...")
+                appendLog("Menjalankan binary Go...")
                 val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
                     .directory(workingDir)
                     .redirectErrorStream(true)
@@ -87,26 +99,25 @@ class MainActivity : AppCompatActivity() {
                 env["TMPDIR"] = workingDir.absolutePath
 
                 val process = pb.start()
-                updateStatus("Daemon BERHASIL berjalan di latar belakang!")
+                appendLog("SUCCESS: Binary Go berhasil dieksekusi!")
 
-                // Baca output log dari proses Go secara real-time
+                // Baca log dari binary secara real-time
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        // Log output bisa dipantau jika diperlukan
+                        appendLog("[GO] $line")
                     }
                 }
 
             } catch (e: Exception) {
-                val errorMsg = e.localizedMessage ?: e.toString()
-                updateStatus("GAGAL: $errorMsg")
+                appendLog("\n[FATAL ERROR]: ${e.localizedMessage}\n${e.stackTraceToString()}")
             }
         }
     }
 
-    private fun updateStatus(msg: String) {
+    private fun appendLog(msg: String) {
         runOnUiThread {
-            statusText.text = msg
+            logTextView.append("$msg\n")
         }
     }
 }
