@@ -7,12 +7,10 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Langsung jalankan DaemonService di background
+        setContentView(R.layout.activity_main)
+
+        // Jalankan DaemonService di background secara aman
         val serviceIntent = Intent(this, DaemonService::class.java)
         startService(serviceIntent)
-        
-        // Tutup activity utama supaya langsung "ngumpet" jadi daemon murni di background
-        finish()
     }
 }
