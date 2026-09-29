@@ -12,6 +12,8 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.concurrent.thread
 
@@ -23,8 +25,7 @@ class DaemonService : Service() {
     companion object {
         const val ACTION_LOG_BROADCAST = "com.inddev.daemon.LOG_BROADCAST"
         const val EXTRA_LOG_LINE = "extra_log_line"
-        
-        // Ring buffer simpan 500 log terakhir agar saat UI dibuka log tidak hilang
+
         val logHistory = ConcurrentLinkedQueue<String>()
         @Volatile var isServiceRunning = false
 
@@ -86,12 +87,69 @@ class DaemonService : Service() {
         }
     }
 
+    private fun downloadBlocklistsIfNeeded(homeDir: File) {
+        val blocklistDir = File(homeDir, "blocklists")
+        if (!blocklistDir.exists()) {
+            blocklistDir.mkdirs()
+        }
+
+        val filesToDownload = listOf(
+            "adaway.txt", "adguarddns.txt", "blocklist-ads.txt",
+            "blocklist-malware.txt", "blocklist-tracking.txt",
+            "easylist.txt", "easyprivacy.txt", "hagezi-pro.txt",
+            "ip-google.txt", "ip-telegram.txt", "reject-list.txt",
+            "stevenblack.txt", "v2fly-ads.txt", "v2fly-google.txt", "v2fly-telegram.txt"
+        )
+
+        val baseUrl = "https://raw.githubusercontent.com/IndogaroDevOps-SyS/blocklists/main/"
+        val total = filesToDownload.size
+
+        addLog(this, "[BLOCKLIST] Memeriksa kelengkapan modul blocklists ($total file)...")
+
+        filesToDownload.forEachIndexed { index, fileName ->
+            val targetFile = File(blocklistDir, fileName)
+            if (!targetFile.exists() || targetFile.length() == 0L) {
+                addLog(this, "[DOWNLOADING] (${index + 1}/$total) Mengunduh $fileName ...")
+                try {
+                    val url = URL("$baseUrl$fileName")
+                    val connection = url.openConnection().apply {
+                        connectTimeout = 10000
+                        readTimeout = 10000
+                    }
+
+                    var bytesCopied = 0L
+                    connection.getInputStream().use { input ->
+                        FileOutputStream(targetFile).use { output ->
+                            val buffer = ByteArray(8192)
+                            var bytes = input.read(buffer)
+                            while (bytes >= 0) {
+                                output.write(buffer, 0, bytes)
+                                bytesCopied += bytes
+                                bytes = input.read(buffer)
+                            }
+                        }
+                    }
+                    val sizeKb = bytesCopied / 1024
+                    addLog(this, "[BLOCKLIST OK] (${index + 1}/$total) $fileName ($sizeKb KB)")
+                } catch (e: Exception) {
+                    addLog(this, "[BLOCKLIST FAIL] (${index + 1}/$total) $fileName: ${e.localizedMessage}")
+                }
+            } else {
+                addLog(this, "[BLOCKLIST READY] (${index + 1}/$total) $fileName sudah ada.")
+            }
+        }
+        addLog(this, "[BLOCKLIST] Sinkronisasi modul blocklists selesai.")
+    }
+
     private fun startGolangDaemon() {
         thread {
             try {
                 addLog(this, "[INIT] Memulai daemon system...")
                 val homeDir = File("/data/data/$packageName/files/home")
                 if (!homeDir.exists()) homeDir.mkdirs()
+
+                // Unduh dan perlihatkan proses download blocklists ke konsol terminal
+                downloadBlocklistsIfNeeded(homeDir)
 
                 addLog(this, "[INIT] Mengekstrak aset & binary secara dinamis...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
@@ -134,8 +192,7 @@ class DaemonService : Service() {
         }
         isServiceRunning = false
         addLog(this, "[SYSTEM] Daemon Service dimatikan.")
-        
-        // Pulihkan ikon jika service dimatikan
+
         val componentName = ComponentName(this, MainActivity::class.java)
         packageManager.setComponentEnabledSetting(
             componentName,
