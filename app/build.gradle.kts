@@ -7,7 +7,6 @@ android {
     namespace = "com.inddev.daemon"
     compileSdk = 34
 
-    // Ambil version code otomatis dari environment variable GitHub Actions, default ke 1 jika build lokal
     val ciVersionCode = System.getenv("BUILD_NUMBER")?.toInt() ?: 1
 
     defaultConfig {
@@ -23,21 +22,12 @@ android {
         }
     }
 
-    signingConfigs {
-        create("release") {
-            // Menggunakan debug keystore atau otomatis generate jika untuk testing aman
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            // Menggunakan signing config debug agar otomatis digenerate oleh Gradle tanpa file luar
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
