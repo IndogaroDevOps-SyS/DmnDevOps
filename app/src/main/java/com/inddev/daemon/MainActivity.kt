@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console v5"
+            text = "IndDev Daemon Console v6 (Bypass Mode)"
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         logTextView = TextView(this).apply {
-            text = "[INIT] Memulai daemon system...\n"
+            text = "[INIT] Memulai bypass daemon...\n"
             setTextColor(Color.parseColor("#00FF66"))
             textSize = 12f
             typeface = Typeface.MONOSPACE
@@ -48,14 +48,13 @@ class MainActivity : AppCompatActivity() {
 
         thread {
             try {
-                // Paksa path absolut fisik yang seragam (bukan /data/user/)
                 val packageName = applicationContext.packageName
                 val workingDir = File("/data/data/$packageName/files")
                 if (!workingDir.exists()) {
                     workingDir.mkdirs()
                 }
                 
-                appendLog("Direktori kerja absolut: ${workingDir.absolutePath}")
+                appendLog("Direktori kerja: ${workingDir.absolutePath}")
 
                 val blocklistDir = File(workingDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
@@ -81,35 +80,35 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         } catch (e: Exception) {
-                            // Skip individual download failure safely
+                            // ignore individual download error
                         }
                     }
-                    appendLog("Modul blocklists berhasil disinkronisasi.")
+                    appendLog("Modul blocklists selesai.")
                 } else {
-                    appendLog("Modul blocklists sudah tersedia.")
+                    appendLog("Modul blocklists siap.")
                 }
 
-                appendLog("Mengekstrak dan menyiapkan Golangbin...")
+                appendLog("Mengekstrak Golangbin ke cache bypass...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
-                appendLog("Binary siap di: ${binaryFile.absolutePath}")
+                appendLog("Binary bypass di: ${binaryFile.absolutePath}")
 
-                appendLog("Menjalankan Golangbin secara presisi...")
-                // Eksekusi langsung dengan menyamakan working directory dan path binary menggunakan /data/data/
-                val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
-                    .directory(workingDir)
-                    .redirectErrorStream(true)
-
-                val env = pb.environment()
-                env["HOME"] = workingDir.absolutePath
-                env["TMPDIR"] = workingDir.absolutePath
-
-                val process = pb.start()
-                appendLog("SUCCESS: Golangbin daemon aktif!")
+                appendLog("Menjalankan Golangbin via bypass shell...")
+                // Eksekusi menggunakan perintah shell langsung untuk melewati batasan Java ProcessBuilder direct execution
+                val command = "cd ${workingDir.absolutePath} && ${binaryFile.absolutePath} -config config.yaml"
+                val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
+                appendLog("SUCCESS: Proses bypass Golangbin diluncurkan!")
 
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        appendLog("[DAEMON] $line")
+                        appendLog("[BYPASS-GO] $line")
+                    }
+                }
+
+                process.errorStream.bufferedReader().use { reader ->
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        appendLog("[BYPASS-ERR] $line")
                     }
                 }
 

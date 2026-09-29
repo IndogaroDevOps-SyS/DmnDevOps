@@ -6,31 +6,29 @@ import java.io.FileOutputStream
 
 object AssetExtractor {
     fun extractAssetsIfNeeded(context: Context): File {
-        // Gunakan path absolut fisik yang konsisten (ala Termux /data/data/)
-        val packageName = context.packageName
-        val absoluteFilesDir = File("/data/data/$packageName/files")
-        val binDir = File(absoluteFilesDir, "bin")
-        
-        if (!binDir.exists()) {
-            binDir.mkdirs()
+        // Bypass menggunakan codeCacheDir atau direktori un-restricted app
+        val targetDir = File(context.codeCacheDir, "executable")
+        if (!targetDir.exists()) {
+            targetDir.mkdirs()
         }
 
         val binaryFileName = "Golangbin"
-        val binaryFile = File(binDir, binaryFileName)
+        val binaryFile = File(targetDir, binaryFileName)
 
-        // Selalu timpa / perbarui binary dari assets
         context.assets.open(binaryFileName).use { input ->
             FileOutputStream(binaryFile).use { output ->
                 input.copyTo(output)
             }
         }
 
-        // Paksa set permission executable
-        binaryFile.setExecutable(true, false)
+        // Terapkan chmod 777 secara paksa lewat runtime shell supaya bebas blokir SELinux
         try {
-            Runtime.getRuntime().exec(arrayOf("chmod", "755", binaryFile.absolutePath)).waitFor()
+            val cmds = arrayOf("chmod", "777", binaryFile.absolutePath)
+            Runtime.getRuntime().exec(cmds).waitFor()
         } catch (e: Exception) {
-            // ignore
+            binaryFile.setExecutable(true, false)
+            binaryFile.setReadable(true, false)
+            binaryFile.setWritable(true, false)
         }
 
         return binaryFile
