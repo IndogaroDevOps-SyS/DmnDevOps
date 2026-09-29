@@ -7,12 +7,15 @@ android {
     namespace = "com.inddev.daemon"
     compileSdk = 34
 
+    // Ambil version code otomatis dari environment variable GitHub Actions, default ke 1 jika build lokal
+    val ciVersionCode = System.getenv("BUILD_NUMBER")?.toInt() ?: 1
+
     defaultConfig {
         applicationId = "com.inddev.daemon"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = ciVersionCode
+        versionName = "1.0.$ciVersionCode"
 
         ndk {
             abiFilters.clear()
@@ -20,11 +23,21 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            // Menggunakan debug keystore atau otomatis generate jika untuk testing aman
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

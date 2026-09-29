@@ -23,11 +23,13 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Build Release APK
+    - name: Build Release APK with Auto Increment Version
+      env:
+        BUILD_NUMBER: ${{ github.run_number }}
       run: ./gradlew assembleRelease
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: IndDev-Daemon-Release
+        name: IndDev-Daemon-Release-${{ github.run_number }}
         path: app/build/outputs/apk/release/*.apk
