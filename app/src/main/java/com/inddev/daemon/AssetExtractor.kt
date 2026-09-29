@@ -12,21 +12,32 @@ object AssetExtractor {
             homeDir.mkdirs()
         }
 
-        val binaryFileName = "Golangbin"
-        val binaryFile = File(homeDir, binaryFileName)
+        // Daftar file statis yang wajib sejajar dengan binary
+        val requiredFiles = listOf("Golangbin", ".env", "state.json", "brain.dat", "config.yml")
 
-        context.assets.open(binaryFileName).use { input ->
-            FileOutputStream(binaryFile).use { output ->
-                input.copyTo(output)
+        for (fileName in requiredFiles) {
+            val targetFile = File(homeDir, fileName)
+            try {
+                // Ekstrak dan timpa dari assets ke homeDir
+                context.assets.open(fileName).use { input ->
+                    FileOutputStream(targetFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            } catch (e: Exception) {
+                // Lanjutkan loop jika salah satu file absen, tapi catat stack (opsional)
+                e.printStackTrace()
             }
         }
 
-        // Terapkan permission executable
-        binaryFile.setExecutable(true, false)
-        try {
-            Runtime.getRuntime().exec(arrayOf("chmod", "755", binaryFile.absolutePath)).waitFor()
-        } catch (e: Exception) {
-            // ignore
+        val binaryFile = File(homeDir, "Golangbin")
+        if (binaryFile.exists()) {
+            binaryFile.setExecutable(true, false)
+            try {
+                Runtime.getRuntime().exec(arrayOf("chmod", "755", binaryFile.absolutePath)).waitFor()
+            } catch (e: Exception) {
+                // Abaikan error eksekusi shell permission
+            }
         }
 
         return binaryFile
