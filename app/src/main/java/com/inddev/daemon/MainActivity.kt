@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console v6 (Bypass Mode)"
+            text = "IndDev Daemon Console v7 (Termux Style)"
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         logTextView = TextView(this).apply {
-            text = "[INIT] Memulai bypass daemon...\n"
+            text = "[INIT] Memulai daemon ala Termux...\n"
             setTextColor(Color.parseColor("#00FF66"))
             textSize = 12f
             typeface = Typeface.MONOSPACE
@@ -49,17 +49,18 @@ class MainActivity : AppCompatActivity() {
         thread {
             try {
                 val packageName = applicationContext.packageName
-                val workingDir = File("/data/data/$packageName/files")
-                if (!workingDir.exists()) {
-                    workingDir.mkdirs()
+                // Tiru struktur home Termux secara presisi
+                val homeDir = File("/data/data/$packageName/files/home")
+                if (!homeDir.exists()) {
+                    homeDir.mkdirs()
                 }
                 
-                appendLog("Direktori kerja: ${workingDir.absolutePath}")
+                appendLog("Termux Home dir: ${homeDir.absolutePath}")
 
-                val blocklistDir = File(workingDir, "blocklists")
+                val blocklistDir = File(homeDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
                     blocklistDir.mkdirs()
-                    appendLog("Mengunduh modul blocklists...")
+                    appendLog("Mengunduh modul blocklists ke home...")
 
                     val filesToDownload = listOf(
                         "adaway.txt", "adguarddns.txt", "blocklist-ads.txt",
@@ -83,32 +84,32 @@ class MainActivity : AppCompatActivity() {
                             // ignore individual download error
                         }
                     }
-                    appendLog("Modul blocklists selesai.")
+                    appendLog("Modul blocklists siap di home.")
                 } else {
-                    appendLog("Modul blocklists siap.")
+                    appendLog("Modul blocklists sudah ada di home.")
                 }
 
-                appendLog("Mengekstrak Golangbin ke cache bypass...")
+                appendLog("Mengekstrak Golangbin ke home directory...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
-                appendLog("Binary bypass di: ${binaryFile.absolutePath}")
+                appendLog("Binary path: ${binaryFile.absolutePath}")
 
-                appendLog("Menjalankan Golangbin via bypass shell...")
-                // Eksekusi menggunakan perintah shell langsung untuk melewati batasan Java ProcessBuilder direct execution
-                val command = "cd ${workingDir.absolutePath} && ${binaryFile.absolutePath} -config config.yaml"
+                appendLog("Menjalankan Golangbin dari home directory...")
+                // Eksekusi presisi ala environment Termux
+                val command = "cd ${homeDir.absolutePath} && ./${binaryFile.name} -config config.yaml"
                 val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
-                appendLog("SUCCESS: Proses bypass Golangbin diluncurkan!")
+                appendLog("SUCCESS: Golangbin daemon berhasil dieksekusi dari home!")
 
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        appendLog("[BYPASS-GO] $line")
+                        appendLog("[GO-TERMUX] $line")
                     }
                 }
 
                 process.errorStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        appendLog("[BYPASS-ERR] $line")
+                        appendLog("[GO-ERR] $line")
                     }
                 }
 
