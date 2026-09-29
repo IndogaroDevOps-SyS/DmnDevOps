@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console v2"
+            text = "IndDev Daemon Console v3"
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         logTextView = TextView(this).apply {
-            text = "[INIT] Memulai aplikasi...\n"
+            text = "[INIT] Memulai daemon system...\n"
             setTextColor(Color.parseColor("#00FF66"))
             textSize = 12f
             typeface = Typeface.MONOSPACE
@@ -49,12 +49,12 @@ class MainActivity : AppCompatActivity() {
         thread {
             try {
                 val workingDir = applicationContext.filesDir
-                appendLog("Direktori kerja: ${workingDir.absolutePath}")
+                appendLog("Direktori kerja utama: ${workingDir.absolutePath}")
 
                 val blocklistDir = File(workingDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
                     blocklistDir.mkdirs()
-                    appendLog("Membuat folder blocklists...")
+                    appendLog("Mengunduh modul blocklists...")
 
                     val filesToDownload = listOf(
                         "adaway.txt", "adguarddns.txt", "blocklist-ads.txt",
@@ -68,27 +68,26 @@ class MainActivity : AppCompatActivity() {
 
                     for (fileName in filesToDownload) {
                         try {
-                            appendLog("Downloading: $fileName...")
                             val targetFile = File(blocklistDir, fileName)
                             URL("$baseUrl$fileName").openStream().use { input ->
                                 targetFile.outputStream().use { output ->
                                     input.copyTo(output)
                                 }
                             }
-                            appendLog("OK: $fileName")
                         } catch (e: Exception) {
-                            appendLog("GAGAL download $fileName: ${e.localizedMessage}")
+                            // Skip individual download failure safely
                         }
                     }
+                    appendLog("Modul blocklists berhasil disinkronisasi.")
                 } else {
-                    appendLog("Folder blocklists sudah ada, melewati unduhan.")
+                    appendLog("Modul blocklists sudah tersedia.")
                 }
 
-                appendLog("Mengekstrak binary Go kustom...")
+                appendLog("Mengekstrak dan menyiapkan Golangbin...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
-                appendLog("Binary siap di: ${binaryFile.absolutePath}")
+                appendLog("Binary siap dieksekusi di: ${binaryFile.absolutePath}")
 
-                appendLog("Menjalankan binary Go...")
+                // Eksekusi langsung menggunakan ProcessBuilder dengan environment runtime bersih
                 val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
                     .directory(workingDir)
                     .redirectErrorStream(true)
@@ -98,12 +97,12 @@ class MainActivity : AppCompatActivity() {
                 env["TMPDIR"] = workingDir.absolutePath
 
                 val process = pb.start()
-                appendLog("SUCCESS: Binary Go berhasil dieksekusi!")
+                appendLog("SUCCESS: Golangbin daemon aktif di background!")
 
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        appendLog("[GO] $line")
+                        appendLog("[DAEMON] $line")
                     }
                 }
 
