@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console v10 (SDK 28)"
+            text = "IndDev Daemon Console v11"
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         logTextView = TextView(this).apply {
-            text = "[INIT] Memulai daemon (targetSdk 28 mode)...\n"
+            text = "[INIT] Memulai daemon system...\n"
             setTextColor(Color.parseColor("#00FF66"))
             textSize = 12f
             typeface = Typeface.MONOSPACE
@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity() {
                     homeDir.mkdirs()
                 }
 
-                appendLog("Working Directory: ${homeDir.absolutePath}")
+                appendLog("Home dir: ${homeDir.absolutePath}")
 
                 val blocklistDir = File(homeDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
@@ -80,20 +80,22 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         } catch (e: Exception) {
-                            // ignore individual failure
+                            // ignore individual download error
                         }
                     }
-                    appendLog("Modul blocklists selesai.")
-                } else {
                     appendLog("Modul blocklists siap.")
+                } else {
+                    appendLog("Modul blocklists sudah ada.")
                 }
 
-                appendLog("Mengekstrak Golangbin dari assets...")
+                appendLog("Mengekstrak aset & binary secara dinamis...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
                 appendLog("Binary path: ${binaryFile.absolutePath}")
 
                 appendLog("Menjalankan Golangbin...")
-                val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
+                
+                // ProcessBuilder murni tanpa flag berlebih. Working directory diikat ke homeDir tempat config.yaml berada.
+                val pb = ProcessBuilder(binaryFile.absolutePath)
                     .directory(homeDir)
                     .redirectErrorStream(true)
 
@@ -102,7 +104,7 @@ class MainActivity : AppCompatActivity() {
                 env["TMPDIR"] = homeDir.absolutePath
 
                 val process = pb.start()
-                appendLog("SUCCESS: Golangbin daemon berhasil berjalan!")
+                appendLog("SUCCESS: Golangbin daemon aktif!")
 
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
