@@ -12,22 +12,30 @@ object AssetExtractor {
             homeDir.mkdirs()
         }
 
-        // Daftar file statis yang wajib sejajar dengan binary
-        val requiredFiles = listOf("Golangbin", ".env", "state.json", "brain.dat", "config.yml")
+        val assetManager = context.assets
+        
+        try {
+            // Ambil SEMUA entitas di root folder assets secara dinamis
+            val assetsList = assetManager.list("") ?: emptyArray()
 
-        for (fileName in requiredFiles) {
-            val targetFile = File(homeDir, fileName)
-            try {
-                // Ekstrak dan timpa dari assets ke homeDir
-                context.assets.open(fileName).use { input ->
-                    FileOutputStream(targetFile).use { output ->
-                        input.copyTo(output)
+            for (fileName in assetsList) {
+                // Lewati folder bawaan Android/sistem jika ada
+                if (fileName == "images" || fileName == "sounds" || fileName == "webkit") continue
+
+                val targetFile = File(homeDir, fileName)
+                try {
+                    // Ekstrak file. Jika 'fileName' adalah sub-folder, open() akan throw exception dan diabaikan otomatis.
+                    assetManager.open(fileName).use { input ->
+                        FileOutputStream(targetFile).use { output ->
+                            input.copyTo(output)
+                        }
                     }
+                } catch (e: Exception) {
+                    // Abaikan exception untuk sub-direktori (KISS approach)
                 }
-            } catch (e: Exception) {
-                // Lanjutkan loop jika salah satu file absen, tapi catat stack (opsional)
-                e.printStackTrace()
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
 
         val binaryFile = File(homeDir, "Golangbin")
@@ -36,7 +44,7 @@ object AssetExtractor {
             try {
                 Runtime.getRuntime().exec(arrayOf("chmod", "755", binaryFile.absolutePath)).waitFor()
             } catch (e: Exception) {
-                // Abaikan error eksekusi shell permission
+                // Abaikan jika env shell tidak support
             }
         }
 
