@@ -12,9 +12,7 @@ android {
     defaultConfig {
         applicationId = "com.inddev.daemon"
         minSdk = 26
-        targetSdk = 34
-        versionCode = ciVersionCode
-        versionName = "1.0.$ciVersionCode"
+        targetSdk = 28 // Bypass SELinux W^X restrictions dengan menargetkan Android 9
 
         ndk {
             abiFilters.clear()
@@ -26,7 +24,6 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Menggunakan signing debug bawaan SDK agar konsisten dan tidak error
             signingConfig = signingConfigs.getByName("debug")
         }
     }

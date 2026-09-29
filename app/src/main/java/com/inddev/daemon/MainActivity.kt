@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console v8 (Direct Native)"
+            text = "IndDev Daemon Console v10 (SDK 28)"
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         logTextView = TextView(this).apply {
-            text = "[INIT] Memulai native Golang runner...\n"
+            text = "[INIT] Memulai daemon (targetSdk 28 mode)...\n"
             setTextColor(Color.parseColor("#00FF66"))
             textSize = 12f
             typeface = Typeface.MONOSPACE
@@ -49,13 +49,12 @@ class MainActivity : AppCompatActivity() {
         thread {
             try {
                 val packageName = applicationContext.packageName
-                // Struktur presisi ala Termux Home directory
                 val homeDir = File("/data/data/$packageName/files/home")
                 if (!homeDir.exists()) {
                     homeDir.mkdirs()
                 }
-                
-                appendLog("Home dir: ${homeDir.absolutePath}")
+
+                appendLog("Working Directory: ${homeDir.absolutePath}")
 
                 val blocklistDir = File(homeDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
@@ -81,26 +80,19 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         } catch (e: Exception) {
-                            // ignore individual download error
+                            // ignore individual failure
                         }
                     }
-                    appendLog("Modul blocklists siap.")
+                    appendLog("Modul blocklists selesai.")
                 } else {
-                    appendLog("Modul blocklists sudah ada.")
+                    appendLog("Modul blocklists siap.")
                 }
 
-                appendLog("Mengekstrak dan menerapkan hak akses ke Golangbin...")
+                appendLog("Mengekstrak Golangbin dari assets...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
-                
-                // Pastikan chmod 777 benar-benar tereksekusi dan dikonfirmasi sebelum spawn process
-                val chmodProcess = Runtime.getRuntime().exec(arrayOf("chmod", "777", binaryFile.absolutePath))
-                chmodProcess.waitFor()
-                
-                appendLog("Binary path: ${binaryFile.absolutePath} [Executable: ${binaryFile.canExecute()}]")
+                appendLog("Binary path: ${binaryFile.absolutePath}")
 
-                appendLog("Menjalankan Golangbin secara native (ProcessBuilder)...")
-                
-                // EKSEKUSI NATIVE MENGGUNAKAN PROCESSBUILDER (PERSIS CARA TERMUX MENJALANKAN FILE)
+                appendLog("Menjalankan Golangbin...")
                 val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
                     .directory(homeDir)
                     .redirectErrorStream(true)
@@ -108,10 +100,9 @@ class MainActivity : AppCompatActivity() {
                 val env = pb.environment()
                 env["HOME"] = homeDir.absolutePath
                 env["TMPDIR"] = homeDir.absolutePath
-                env["PATH"] = "${homeDir.absolutePath}:/system/bin:/system/xbin"
 
                 val process = pb.start()
-                appendLog("SUCCESS: Golangbin berhasil di-spawn secara native!")
+                appendLog("SUCCESS: Golangbin daemon berhasil berjalan!")
 
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
