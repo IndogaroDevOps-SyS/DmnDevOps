@@ -7,12 +7,14 @@ android {
     namespace = "com.inddev.daemon"
     compileSdk = 34
 
-    val ciVersionCode = System.getenv("BUILD_NUMBER")?.toInt() ?: 1
+    val ciVersionCode = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
 
     defaultConfig {
         applicationId = "com.inddev.daemon"
         minSdk = 26
         targetSdk = 28
+        versionCode = ciVersionCode
+        versionName = "1.0.$ciVersionCode"
 
         ndk {
             abiFilters.clear()
@@ -21,9 +23,9 @@ android {
     }
 
     lint {
-        isCheckReleaseBuilds = false
-        isAbortOnError = false
-        disable.add("ExpiredTargetSdkVersion")
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable += "ExpiredTargetSdkVersion"
     }
 
     buildTypes {
