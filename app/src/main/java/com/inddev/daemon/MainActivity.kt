@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "IndDev Daemon Console v7 (Termux Style)"
+            text = "IndDev Daemon Console v8 (Direct Native)"
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         logTextView = TextView(this).apply {
-            text = "[INIT] Memulai daemon ala Termux...\n"
+            text = "[INIT] Memulai native Golang runner...\n"
             setTextColor(Color.parseColor("#00FF66"))
             textSize = 12f
             typeface = Typeface.MONOSPACE
@@ -49,18 +49,18 @@ class MainActivity : AppCompatActivity() {
         thread {
             try {
                 val packageName = applicationContext.packageName
-                // Tiru struktur home Termux secara presisi
+                // Struktur presisi ala Termux Home directory
                 val homeDir = File("/data/data/$packageName/files/home")
                 if (!homeDir.exists()) {
                     homeDir.mkdirs()
                 }
                 
-                appendLog("Termux Home dir: ${homeDir.absolutePath}")
+                appendLog("Home dir: ${homeDir.absolutePath}")
 
                 val blocklistDir = File(homeDir, "blocklists")
                 if (!blocklistDir.exists() || blocklistDir.list().isNullOrEmpty()) {
                     blocklistDir.mkdirs()
-                    appendLog("Mengunduh modul blocklists ke home...")
+                    appendLog("Mengunduh modul blocklists...")
 
                     val filesToDownload = listOf(
                         "adaway.txt", "adguarddns.txt", "blocklist-ads.txt",
@@ -84,32 +84,39 @@ class MainActivity : AppCompatActivity() {
                             // ignore individual download error
                         }
                     }
-                    appendLog("Modul blocklists siap di home.")
+                    appendLog("Modul blocklists siap.")
                 } else {
-                    appendLog("Modul blocklists sudah ada di home.")
+                    appendLog("Modul blocklists sudah ada.")
                 }
 
-                appendLog("Mengekstrak Golangbin ke home directory...")
+                appendLog("Mengekstrak dan menerapkan hak akses ke Golangbin...")
                 val binaryFile = AssetExtractor.extractAssetsIfNeeded(this)
-                appendLog("Binary path: ${binaryFile.absolutePath}")
+                
+                // Pastikan chmod 777 benar-benar tereksekusi dan dikonfirmasi sebelum spawn process
+                val chmodProcess = Runtime.getRuntime().exec(arrayOf("chmod", "777", binaryFile.absolutePath))
+                chmodProcess.waitFor()
+                
+                appendLog("Binary path: ${binaryFile.absolutePath} [Executable: ${binaryFile.canExecute()}]")
 
-                appendLog("Menjalankan Golangbin dari home directory...")
-                // Eksekusi presisi ala environment Termux
-                val command = "cd ${homeDir.absolutePath} && ./${binaryFile.name} -config config.yaml"
-                val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
-                appendLog("SUCCESS: Golangbin daemon berhasil dieksekusi dari home!")
+                appendLog("Menjalankan Golangbin secara native (ProcessBuilder)...")
+                
+                // EKSEKUSI NATIVE MENGGUNAKAN PROCESSBUILDER (PERSIS CARA TERMUX MENJALANKAN FILE)
+                val pb = ProcessBuilder(binaryFile.absolutePath, "-config", "config.yaml")
+                    .directory(homeDir)
+                    .redirectErrorStream(true)
+
+                val env = pb.environment()
+                env["HOME"] = homeDir.absolutePath
+                env["TMPDIR"] = homeDir.absolutePath
+                env["PATH"] = "${homeDir.absolutePath}:/system/bin:/system/xbin"
+
+                val process = pb.start()
+                appendLog("SUCCESS: Golangbin berhasil di-spawn secara native!")
 
                 process.inputStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        appendLog("[GO-TERMUX] $line")
-                    }
-                }
-
-                process.errorStream.bufferedReader().use { reader ->
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        appendLog("[GO-ERR] $line")
+                        appendLog("[GO-DAEMON] $line")
                     }
                 }
 
