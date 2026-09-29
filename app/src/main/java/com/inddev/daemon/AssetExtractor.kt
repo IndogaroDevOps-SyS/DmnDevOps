@@ -1,67 +1,30 @@
 package com.inddev.daemon
 
 import android.content.Context
-import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 
 object AssetExtractor {
-    private const val TAG = "AssetExtractor"
-
     fun extractAssetsIfNeeded(context: Context): File {
-        val filesDir = context.filesDir
-        val binDir = File(filesDir, "bin").apply { if (!exists()) mkdirs() }
-        
-        // Daftar file dan folder root assets yang disalin
-        val assetItems = listOf(
-            "bin/xray",
-            "config.yaml",
-            ".env",
-            "brain.dat",
-            "state.json"
-        )
+        val binDir = File(context.filesDir, "bin")
+        if (!binDir.exists()) {
+            binDir.mkdirs()
+        }
 
-        for (item in assetItems) {
-            val outFile = File(filesDir, item)
-            if (outFile.exists() && item.contains("bin/")) {
-                outFile.setExecutable(true, false)
-                continue
-            }
-            
-            try {
-                outFile.parentFile?.mkdirs()
-                context.assets.open(item).use { input ->
-                    FileOutputStream(outFile).use { output ->
-                        input.copyTo(output)
-                    }
+        val binaryFile = File(binDir, "xray")
+
+        // Jika binary belum ada di internal storage, ekstrak dari assets
+        if (!binaryFile.exists()) {
+            context.assets.open("xray").use { input ->
+                FileOutputStream(binaryFile).use { output ->
+                    input.copyTo(output)
                 }
-                if (item.contains("bin/")) {
-                    outFile.setExecutable(true, false)
-                }
-                Log.i(TAG, "Berhasil mengekstrak: $item ke ${outFile.absolutePath}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Gagal mengekstrak aset $item: ${e.message}")
             }
         }
 
-        // Ekstraks folder blocklists secara rekursif dari assets
-        try {
-            val blocklistOutDir = File(filesDir, "blocklists").apply { if (!exists()) mkdirs() }
-            val assetManager = context.assets
-            val listFiles = assetManager.list("blocklists") ?: emptyArray()
-            for (filename in listFiles) {
-                val outFile = File(blocklistOutDir, filename)
-                assetManager.open("blocklists/$filename").use { input ->
-                    FileOutputStream(outFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            }
-            Log.i(TAG, "Berhasil mengekstrak folder blocklists")
-        } catch (e: Exception) {
-            Log.e(TAG, "Gagal mengekstrak folder blocklists: ${e.message}")
-        }
+        // BERIKAN IZIN EKSEKUSI (CHMOD +X) SECARA PAKSA AGAR TIDAK ERROR 13 PERMISSION DENIED
+        binaryFile.setExecutable(true, false)
 
-        return File(filesDir, "bin/xray")
+        return binaryFile
     }
 }

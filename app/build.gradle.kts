@@ -26,7 +26,7 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Menggunakan signing config debug agar otomatis digenerate oleh Gradle tanpa file luar
+            // Memakai signing config debug secara eksplisit agar signature stabil antar-build
             signingConfig = signingConfigs.getByName("debug")
         }
     }
