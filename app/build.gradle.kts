@@ -26,7 +26,7 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Memakai signing config debug secara eksplisit agar signature stabil antar-build
+            // Menggunakan signing debug bawaan SDK agar konsisten dan tidak error
             signingConfig = signingConfigs.getByName("debug")
         }
     }

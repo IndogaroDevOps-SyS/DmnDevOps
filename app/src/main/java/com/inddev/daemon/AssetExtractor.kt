@@ -11,27 +11,25 @@ object AssetExtractor {
             binDir.mkdirs()
         }
 
-        // Cari file binary yang ada di folder assets aplikasi
-        val assetManager = context.assets
-        val assetsList = assetManager.list("") ?: emptyArray()
-        
-        // Pilih file apa saja di assets yang bukan folder bawaan android (seperti images, js, dsb)
-        // Atau cari file binary utama lu
-        val binaryAssetName = assetsList.firstOrNull { 
-            it != "images" && it != "sounds" && it != "webkit" && !it.endsWith(".png") && !it.endsWith(".ogg") 
-        } ?: throw IllegalStateException("Tidak ada file binary Go yang ditemukan di folder assets!")
+        // Hapus file salah tangkap sebelumnya jika ada (seperti OWNERS)
+        val wrongFiles = listOf("OWNERS", "xray")
+        for (name in wrongFiles) {
+            val badFile = File(binDir, name)
+            if (badFile.exists()) badFile.delete()
+        }
 
-        val binaryFile = File(binDir, binaryAssetName)
+        // Wajib strict mengambil file bernama "Golangbin"
+        val binaryFileName = "Golangbin"
+        val binaryFile = File(binDir, binaryFileName)
 
-        if (!binaryFile.exists()) {
-            assetManager.open(binaryAssetName).use { input ->
-                FileOutputStream(binaryFile).use { output ->
-                    input.copyTo(output)
-                }
+        // Selalu timpa / perbarui binary jika ada versi baru di APK
+        context.assets.open(binaryFileName).use { input ->
+            FileOutputStream(binaryFile).use { output ->
+                input.copyTo(output)
             }
         }
 
-        // Wajib beri izin eksekusi (chmod +x)
+        // Berikan hak eksekusi chmod +x secara mutlak
         binaryFile.setExecutable(true, false)
 
         return binaryFile
